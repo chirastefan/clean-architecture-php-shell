@@ -1,0 +1,132 @@
+<?php
+// Simulate PHP backend data
+$userId = "user_php_202";
+$userTheme = "dark";
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Approach 2: Simulated Module Federation (Option B)</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 2rem; background: #f8fafc; color: #0f172a; }
+        .nav { margin-bottom: 2rem; }
+        .nav a { margin-right: 1rem; color: #2563eb; text-decoration: none; font-weight: bold; }
+        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        .target-container { min-height: 120px; }
+    </style>
+
+    <!-- Option B: JS Utility Script for Preloading Shared Vendors & Registering Import Map -->
+    <script>
+      /**
+       * Option B Vendor Preloader Function
+       * Uses try / catch around dynamic import() to test & load shared vendor dependencies
+       * from primary GCP storage, falling back to secondary storage if it fails.
+       */
+      async function loadVendorWithFallback(primaryUrl, fallbackUrl) {
+        try {
+          console.log(`Attempting vendor load from Primary: ${primaryUrl}`);
+          const vendor = await import(primaryUrl);
+          console.log('✅ Option B: Successfully loaded vendor from Primary Storage');
+          return primaryUrl;
+        } catch (err) {
+          console.warn(`⚠️ Option B: Primary Vendor failed (${err.message}). Trying Fallback: ${fallbackUrl}`);
+          await import(fallbackUrl);
+          console.log('✅ Option B: Successfully loaded vendor from Fallback Storage');
+          return fallbackUrl;
+        }
+      }
+
+      /**
+       * Option B Remote Module Loader Function (Simulated Module Federation)
+       * Dynamically resolves vendors with fallback, registers an Import Map, 
+       * imports the remote ES Module, and calls its exported `mount` function.
+       */
+      async function loadAndMountFederatedRemote(remoteUrl, containerId, props = {}) {
+        try {
+          // 1. Resolve & Preload Shared Vendors (with fallback resilience)
+          const validReactUrl = await loadVendorWithFallback('./assets/react.mjs', './assets/react.mjs');
+          const validReactDOMUrl = await loadVendorWithFallback('./assets/react-dom-client.mjs', './assets/react-dom-client.mjs');
+
+          // 2. Inject Import Map so the remote module (`import React from 'react'`) can resolve bare specifiers!
+          if (!document.querySelector('script[type="importmap"]')) {
+            const importMap = {
+              imports: {
+                "react": validReactUrl,
+                "react-dom/client": validReactDOMUrl
+              }
+            };
+            const mapScript = document.createElement('script');
+            mapScript.type = 'importmap';
+            mapScript.textContent = JSON.stringify(importMap);
+            document.head.appendChild(mapScript);
+          }
+
+          // 3. Dynamically import the remote federated module
+          const remoteModule = await import(remoteUrl);
+
+          // 4. Imperatively mount the React component into the placeholder container
+          const targetEl = document.getElementById(containerId);
+          if (remoteModule && typeof remoteModule.mount === 'function') {
+            remoteModule.mount(targetEl, props);
+            console.log(`✅ Option B: Mounted federated module into #${containerId}`);
+          } else {
+            console.error('Remote module does not export a mount() function!');
+          }
+        } catch (error) {
+          console.error('Failed to load or mount federated module:', error);
+          document.getElementById(containerId).innerHTML = `
+            <div style="color: red; padding: 1rem; border: 1px solid red; border-radius: 4px;">
+              Failed to load remote module: ${error.message}
+            </div>
+          `;
+        }
+      }
+    </script>
+</head>
+<body>
+
+    <div class="nav">
+        <a href="index.php">← Back to Comparison Dashboard</a>
+    </div>
+
+    <h1>Approach 2: Simulated Module Federation (Option B)</h1>
+    <p>This approach uses <strong>Imperative Preloading & Mounting</strong>. PHP renders a placeholder <code>div</code>, and JavaScript handles loading vendors, registering the Import Map, & mounting remote React modules into it.</p>
+
+    <div class="card">
+        <h3>PHP Placeholder Container:</h3>
+        
+        <!-- Placeholder div rendered by PHP -->
+        <div id="federated-container" class="target-container">
+            <em>Loading federated component...</em>
+        </div>
+    </div>
+
+    <!-- Execute the Option B mount call using PHP data passed into JS -->
+    <script type="module">
+        loadAndMountFederatedRemote(
+            './assets/federated-tracker.js', 
+            'federated-container', 
+            {
+                userId: "<?php echo htmlspecialchars($userId); ?>",
+                theme: "<?php echo htmlspecialchars($userTheme); ?>",
+                onAction: (msg) => {
+                    alert('PHP JS Callback received: ' + msg);
+                }
+            }
+        );
+    </script>
+
+    <div class="card">
+        <h4>How Option B Works under the Hood:</h4>
+        <ol>
+            <li>PHP outputs <code>&lt;div id="federated-container"&gt;&lt;/div&gt;</code>.</li>
+            <li>A JS script runs <code>loadVendorWithFallback()</code> with <code>try / catch</code> blocks.</li>
+            <li>JS registers the Import Map dynamically for bare specifiers (`react`).</li>
+            <li>Dynamic <code>import('./assets/federated-tracker.js')</code> fetches the remote module.</li>
+            <li>The remote's exported <code>mount(element, props)</code> function renders React into the container.</li>
+        </ol>
+    </div>
+
+</body>
+</html>

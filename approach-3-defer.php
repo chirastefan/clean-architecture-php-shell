@@ -1,0 +1,85 @@
+<?php
+// Simulate PHP backend data
+$userId = "user_php_303";
+$userTheme = "dark";
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Approach 3: Non-blocking Script Loading (`defer`)</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 2rem; background: #f8fafc; color: #0f172a; }
+        .nav { margin-bottom: 2rem; }
+        .nav a { margin-right: 1rem; color: #2563eb; text-decoration: none; font-weight: bold; }
+        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        .code-block { background: #1e293b; color: #f8fafc; padding: 1rem; border-radius: 6px; font-family: monospace; font-size: 0.9rem; overflow-x: auto; }
+    </style>
+
+    <!-- 
+      APPROACH 3: Classical & ES Module Script Tags with `defer`
+      
+      Why 'defer' is powerful:
+      1. Downloads happen in PARALLEL in the background while HTML is being parsed (Zero page freeze).
+      2. Execution is DELAYED until HTML parsing completes (No race conditions accessing DOM).
+      3. Guaranteed ORDER of execution (Script 1 finishes before Script 2 runs).
+    -->
+
+    <!-- 1. Define Import Map (Pre-requisite for ESM) -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "./assets/react.mjs",
+          "react-dom/client": "./assets/react-dom-client.mjs"
+        }
+      }
+    </script>
+
+    <!-- Web Component stylesheet -->
+    <link rel="stylesheet" href="./assets/web.css">
+
+    <!-- 
+      2. Load Web Component script with 'defer'
+      Note: ES module scripts (<script type="module">) defer by default in modern browsers,
+      but adding 'defer' explicitly documents the intent for traditional scripts!
+    -->
+    <script type="module" src="./assets/budget-tracker.js" defer></script>
+</head>
+<body>
+
+    <div class="nav">
+        <a href="index.php">← Back to Comparison Dashboard</a>
+    </div>
+
+    <h1>Approach 3: Non-Blocking Script Loading with `defer`</h1>
+    <p>This approach uses standard <code>&lt;script src="..." defer&gt;</code> tags placed in the <code>&lt;head&gt;</code>.</p>
+
+    <div class="card">
+        <h3>PHP Rendered HTML Tag:</h3>
+        
+        <!-- Native Declarative Custom Element -->
+        <budget-tracker-widget 
+            user-id="<?php echo htmlspecialchars($userId); ?>" 
+            theme="<?php echo htmlspecialchars($userTheme); ?>">
+        </budget-tracker-widget>
+    </div>
+
+    <div class="card">
+        <h4>Why `<script defer>` is the Gold Standard for PHP Integrations:</h4>
+        
+        <div class="code-block">
+&lt;head&gt;<br>
+&nbsp;&nbsp;&lt;!-- Downloaded asynchronously, executed in order AFTER DOM is ready --&gt;<br>
+&nbsp;&nbsp;&lt;script type="module" src="./assets/budget-tracker.js" defer&gt;&lt;/script&gt;<br>
+&lt;/head&gt;
+        </div>
+
+        <ul>
+            <li><strong>Non-blocking Download:</strong> The browser fetches the JS bundle in the background while PHP's HTML renders.</li>
+            <li><strong>Zero Race Conditions:</strong> Execution strictly waits until the HTML DOM tree is fully constructed.</li>
+            <li><strong>Predictable Execution Order:</strong> Multiple deferred scripts execute in the exact order they appear in the HTML.</li>
+        </ul>
+    </div>
+
+</body>
+</html>
